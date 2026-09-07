@@ -6,13 +6,13 @@
 var GYMOS_CONFIG = {
 
   // 1️⃣ Pega aquí la URL de tu aplicación web de Apps Script (termina en /exec)
-  url: 'https://script.google.com/macros/s/PEGA-AQUI-TU-URL/exec',
+  url: 'https://script.google.com/macros/s/AKfycby0iJj2TJsk-qcTCXy01e9VCC1VjHLGFUyOTZftOeBTrb1l23we9KIZZvH20b-6QKRyUQ/exec',
 
   // 2️⃣ Nombre del gimnasio (sale debajo del icono en el celular)
-  nombre: 'PowerGym',
+  nombre: 'TeamFerGym',
 
   // 3️⃣ Nombre largo (sale en la pantalla de carga)
-  nombreLargo: 'PowerGym · Gestión',
+  nombreLargo: 'TeamFerGym',
 
   // 4️⃣ Color de la marca (el mismo que pusiste en Ajustes)
   color: '#f97316',
