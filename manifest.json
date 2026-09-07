@@ -1,0 +1,33 @@
+{
+  "name": "PowerGym · Gestión",
+  "short_name": "PowerGym",
+  "description": "Membresía, rutinas y asistencia del gimnasio",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#f97316",
+  "background_color": "#0a0c11",
+  "lang": "es-CO",
+  "categories": ["health", "fitness", "business"],
+  "icons": [
+    { "src": "icons/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icono-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icono-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mi código QR",
+      "short_name": "Mi QR",
+      "url": "./index.html?ir=qr",
+      "icons": [{ "src": "icons/icono-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Mis rutinas",
+      "short_name": "Rutinas",
+      "url": "./index.html?ir=rutinas",
+      "icons": [{ "src": "icons/icono-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>GymOS</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f97316">
+<link rel="icon" href="icons/icono-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GymOS">
+
+<script src="config.js"></script>
+<style>
+  :root{ --color:#f97316; --fondo:#0a0c11; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:var(--fondo);
+    font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#eef1f6}
+  #marco{position:fixed;inset:0;width:100%;height:100%;border:0;display:block;background:var(--fondo)}
+
+  /* Pantalla de carga */
+  #carga{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:18px;background:var(--fondo);
+    transition:opacity .4s ease}
+  #carga.fuera{opacity:0;pointer-events:none}
+  #carga img{width:96px;height:96px;border-radius:24px;box-shadow:0 18px 40px -14px rgba(0,0,0,.7)}
+  #carga b{font-size:1.15rem;font-weight:700;letter-spacing:-.01em}
+  .puntos{display:flex;gap:6px}
+  .puntos i{width:7px;height:7px;border-radius:50%;background:var(--color);
+    animation:latir 1.1s infinite ease-in-out}
+  .puntos i:nth-child(2){animation-delay:.16s}
+  .puntos i:nth-child(3){animation-delay:.32s}
+  @keyframes latir{0%,80%,100%{opacity:.25;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+  #cargaMsj{font-size:.82rem;color:#8892a4;text-align:center;max-width:280px;line-height:1.5}
+
+  /* Aviso de error */
+  #falla{position:fixed;inset:0;z-index:11;display:none;flex-direction:column;
+    align-items:center;justify-content:center;gap:14px;padding:28px;text-align:center;
+    background:var(--fondo)}
+  #falla.on{display:flex}
+  #falla p{font-size:.9rem;color:#98a2b3;line-height:1.6;max-width:320px}
+  #falla button{background:var(--color);color:#fff;border:none;border-radius:12px;
+    padding:12px 22px;font-size:.92rem;font-weight:600;cursor:pointer}
+
+  /* Botón para instalar (Android) */
+  #instalar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));
+    z-index:12;display:none;align-items:center;gap:10px;background:#12161f;color:#eef1f6;
+    border:1px solid rgba(255,255,255,.14);border-radius:99px;padding:10px 14px 10px 16px;
+    font-size:.85rem;box-shadow:0 12px 30px -10px rgba(0,0,0,.8)}
+  #instalar.on{display:flex}
+  #instalar button{background:var(--color);color:#fff;border:none;border-radius:99px;
+    padding:8px 15px;font-weight:700;font-size:.82rem;cursor:pointer}
+  #instalar span.x{color:#5d6675;padding:0 4px;cursor:pointer;font-size:1.1rem}
+</style>
+</head>
+<body>
+
+<div id="carga">
+  <img src="icons/icono-192.png" alt="">
+  <b id="cargaNombre">GymOS</b>
+  <div class="puntos"><i></i><i></i><i></i></div>
+  <div id="cargaMsj">Conectando con el gimnasio…</div>
+</div>
+
+<div id="falla">
+  <img src="icons/icono-192.png" alt="" style="width:72px;height:72px;border-radius:18px">
+  <b>No pudimos conectar</b>
+  <p id="fallaMsj">Revisa tu conexión a internet e inténtalo de nuevo.
+    Si acabas de instalar la app, verifica que la dirección del gimnasio esté bien escrita.</p>
+  <button onclick="location.reload()">Reintentar</button>
+</div>
+
+<div id="instalar">
+  <span>Instálala en tu celular</span>
+  <button id="btnInstalar">Instalar</button>
+  <span class="x" id="cerrarInstalar">✕</span>
+</div>
+
+<iframe id="marco" title="GymOS"
+  allow="camera; microphone; screen-wake-lock; fullscreen; clipboard-write"
+  referrerpolicy="no-referrer-when-downgrade"></iframe>
+
+<script>
+(function () {
+  var CFG = window.GYMOS_CONFIG || {};
+  var raiz = document.documentElement;
+  if (CFG.color) raiz.style.setProperty('--color', CFG.color);
+  if (CFG.fondo) raiz.style.setProperty('--fondo', CFG.fondo);
+  if (CFG.nombre) {
+    document.getElementById('cargaNombre').textContent = CFG.nombre;
+    document.title = CFG.nombreLargo || CFG.nombre;
+  }
+  var meta = document.querySelector('meta[name="theme-color"]');
+  if (meta && CFG.color) meta.setAttribute('content', CFG.color);
+
+  /* ── Cargar la app ─────────────────────────────────────────────────── */
+  var marco = document.getElementById('marco');
+  var carga = document.getElementById('carga');
+  var falla = document.getElementById('falla');
+
+  if (!CFG.url || CFG.url.indexOf('PEGA-AQUI') > -1) {
+    carga.classList.add('fuera');
+    falla.classList.add('on');
+    document.getElementById('fallaMsj').textContent =
+      'Falta configurar la dirección del gimnasio. Abre el archivo config.js y pega ahí la URL que termina en /exec.';
+    return;
+  }
+
+  // Atajos del menú largo del icono (?ir=qr, ?ir=rutinas)
+  var ir = new URLSearchParams(location.search).get('ir') || '';
+  marco.src = CFG.url + (ir ? (CFG.url.indexOf('?') > -1 ? '&' : '?') + 'ir=' + encodeURIComponent(ir) : '');
+
+  var listo = false;
+  marco.addEventListener('load', function () {
+    listo = true;
+    setTimeout(function () { carga.classList.add('fuera'); }, 500);
+  });
+  setTimeout(function () {
+    if (!listo) { carga.classList.add('fuera'); falla.classList.add('on'); }
+  }, 25000);
+
+  /* ── Service worker: hace la app instalable y muestra los avisos ───── */
+  var sw = null;
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').then(function (reg) {
+      sw = reg;
+    }).catch(function () { /* sin SW se sigue usando igual */ });
+  }
+
+  /* ── Instalación (Android / escritorio) ───────────────────────────── */
+  var evtInstalar = null;
+  var cajaInstalar = document.getElementById('instalar');
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    evtInstalar = e;
+    try { if (localStorage.getItem('gymos_no_instalar') === '1') return; } catch (x) {}
+    setTimeout(function () { cajaInstalar.classList.add('on'); }, 3000);
+  });
+  document.getElementById('btnInstalar').onclick = function () {
+    cajaInstalar.classList.remove('on');
+    if (evtInstalar) { evtInstalar.prompt(); evtInstalar = null; }
+  };
+  document.getElementById('cerrarInstalar').onclick = function () {
+    cajaInstalar.classList.remove('on');
+    try { localStorage.setItem('gymos_no_instalar', '1'); } catch (x) {}
+  };
+  window.addEventListener('appinstalled', function () { cajaInstalar.classList.remove('on'); });
+
+  /* ── Bloqueo de pantalla (que no se apague durante el entreno) ─────── */
+  var wake = null;
+  function pedirWake(on) {
+    if (!('wakeLock' in navigator)) return;
+    if (on) {
+      navigator.wakeLock.request('screen').then(function (w) {
+        wake = w;
+        w.addEventListener('release', function () { wake = null; });
+      }).catch(function () {});
+    } else if (wake) { try { wake.release(); } catch (e) {} wake = null; }
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible' && wake === null && pedirWakeActivo) pedirWake(true);
+  });
+  var pedirWakeActivo = false;
+
+  /* ── Avisos en la barra de notificaciones ─────────────────────────── */
+  function permisoNotif() {
+    if (!('Notification' in window)) return Promise.resolve('unsupported');
+    if (Notification.permission !== 'default') return Promise.resolve(Notification.permission);
+    return Notification.requestPermission();
+  }
+
+  function mostrarNotif(d) {
+    var opciones = {
+      body: d.cuerpo || '',
+      icon: 'icons/icono-192.png',
+      badge: 'icons/badge-96.png',
+      tag: d.tag || 'gymos',
+      renotify: !!d.revibrar,
+      silent: !!d.silencioso,
+      requireInteraction: !!d.permanente,
+      vibrate: d.vibrar || undefined,
+      data: { url: location.href },
+    };
+    if (sw && sw.showNotification) { sw.showNotification(d.titulo || 'GymOS', opciones); }
+    else if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(d.titulo || 'GymOS', opciones);
+    }
+  }
+
+  function cerrarNotif(tag) {
+    if (!sw || !sw.getNotifications) return;
+    sw.getNotifications({ tag: tag || 'gymos' }).then(function (l) {
+      l.forEach(function (n) { n.close(); });
+    });
+  }
+
+  /* ── Puente con la app de adentro ─────────────────────────────────── */
+  window.addEventListener('message', function (ev) {
+    var d = ev.data;
+    if (!d || d.gymos !== true || !d.accion) return;
+    // Solo aceptamos mensajes que vengan de nuestro propio marco
+    var desdeElMarco = false;
+    try { desdeElMarco = (ev.source === marco.contentWindow); } catch (x) {}
+    if (!desdeElMarco) {
+      var o = String(ev.origin || '');
+      if (o.indexOf('google.com') === -1 && o.indexOf('googleusercontent.com') === -1) return;
+    }
+
+    switch (d.accion) {
+      case 'hola':
+        if (ev.source) {
+          ev.source.postMessage({
+            gymos: true, accion: 'contenedor',
+            pwa: true,
+            instalada: window.matchMedia('(display-mode: standalone)').matches ||
+                       window.navigator.standalone === true,
+            notificaciones: ('Notification' in window) ? Notification.permission : 'unsupported',
+            wakelock: ('wakeLock' in navigator),
+          }, '*');
+        }
+        break;
+
+      case 'pedirPermiso':
+        permisoNotif().then(function (p) {
+          if (ev.source) ev.source.postMessage({ gymos: true, accion: 'permiso', estado: p }, '*');
+        });
+        break;
+
+      case 'notificar':   mostrarNotif(d); break;
+      case 'cerrarNotif': cerrarNotif(d.tag); break;
+      case 'vibrar':
+        try { if (navigator.vibrate) navigator.vibrate(d.patron || [200]); } catch (e) {}
+        break;
+      case 'pantallaEncendida':
+        pedirWakeActivo = !!d.on;
+        pedirWake(!!d.on);
+        break;
+      case 'color':
+        if (d.color) {
+          raiz.style.setProperty('--color', d.color);
+          if (meta) meta.setAttribute('content', d.color);
+        }
+        break;
+    }
+  });
+})();
+</script>
+</body>
+</html>
